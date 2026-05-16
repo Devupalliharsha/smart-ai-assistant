@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Assistant — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f9fa;--surface:#fff;--border:#e9ecef;--border2:#dee2e6;
+  --text:#212529;--muted:#6c757d;--accent:#2563eb;--accent-light:#eff6ff;
+  --hot:#dc2626;--warm:#d97706;--cold:#2563eb;
+  --ok:#16a34a;--fail:#dc2626;--radius:10px;--sidebar:230px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:14px}
+
+/* Login */
+#login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:6px}
+#login h2{font-size:22px;font-weight:700;margin-bottom:4px}
+#login p{color:var(--muted);font-size:13px;margin-bottom:20px}
+.lbox{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px 36px;width:340px;display:flex;flex-direction:column;gap:12px}
+.lbox input{border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s}
+.lbox input:focus{border-color:var(--accent)}
+.lbox button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+.lbox button:hover{opacity:.9}
+#lerr{color:var(--fail);font-size:12px;min-height:16px;font-family:'JetBrains Mono',monospace}
+
+/* Sidebar */
+#sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 0;position:sticky;top:0;height:100vh;flex-shrink:0}
+.logo{padding:0 18px 20px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+.nav-sec{padding:12px 18px 4px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.nav{display:flex;align-items:center;gap:9px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border-radius:0;transition:all .12s;border-left:2px solid transparent}
+.nav:hover{color:var(--text);background:var(--bg)}
+.nav.on{color:var(--accent);background:var(--accent-light);border-left-color:var(--accent)}
+.sb-bot{margin-top:auto;padding:16px 18px;border-top:1px solid var(--border)}
+.sb-user{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:8px}
+.out-btn{width:100%;background:none;border:1px solid var(--border);border-radius:7px;padding:7px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif}
+.out-btn:hover{border-color:var(--fail);color:var(--fail)}
+
+/* Main */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface)}
+.topbar-t{font-size:15px;font-weight:600}
+.rfbtn{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+.rfbtn:hover{border-color:var(--accent);color:var(--accent)}
+.live{display:flex;align-items:center;gap:6px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.content{padding:24px 28px;overflow-y:auto;flex:1}
+.panel{display:none}.panel.on{display:block}
+
+/* Stat cards */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;border-top:3px solid var(--accent)}
+.sc.g{border-top-color:var(--ok)}.sc.w{border-top-color:var(--warm)}.sc.r{border-top-color:var(--fail)}
+.sc-l{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.sc-v{font-size:26px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
+.sc-s{font-size:11px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace}
+
+/* Charts */
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.cc-t{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.cw{position:relative;height:180px}
+
+/* Table */
+.tc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.th2{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.tt{font-size:13px;font-weight:600}.tc-{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:9px 18px;background:var(--bg);border-bottom:1px solid var(--border)}
+td{padding:10px 18px;font-size:12px;font-family:'JetBrains Mono',monospace;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+
+/* Badges */
+.b{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.b-hot{background:#fef2f2;color:var(--hot);border:1px solid #fecaca}
+.b-warm{background:#fffbeb;color:var(--warm);border:1px solid #fde68a}
+.b-cold{background:#eff6ff;color:var(--cold);border:1px solid #bfdbfe}
+.b-ok{background:#f0fdf4;color:var(--ok);border:1px solid #bbf7d0}
+.b-fail{background:#fef2f2;color:var(--fail);border:1px solid #fecaca}
+.b-user{background:#eff6ff;color:var(--cold);border:1px solid #bfdbfe}
+.b-ai{background:#f0fdf4;color:var(--ok);border:1px solid #bbf7d0}
+
+/* Chat */
+.chat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);height:500px;display:flex;flex-direction:column;overflow:hidden}
+.msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+.msgs::-webkit-scrollbar{width:4px}.msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.msg{max-width:78%;display:flex;flex-direction:column;gap:3px}
+.msg.u{align-self:flex-end;align-items:flex-end}
+.msg.a{align-self:flex-start}
+.bubble{padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6;font-family:'Inter',sans-serif}
+.msg.u .bubble{background:var(--accent);color:#fff;border-radius:10px 10px 3px 10px}
+.msg.a .bubble{background:var(--bg);border:1px solid var(--border);border-radius:10px 10px 10px 3px}
+.mmeta{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+.cinput{display:flex;gap:8px;padding:14px 16px;border-top:1px solid var(--border);background:var(--bg)}
+.cinput input{flex:1;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;outline:none;background:var(--surface)}
+.cinput input:focus{border-color:var(--accent)}
+.sendbtn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+.sendbtn:hover{opacity:.88}.sendbtn:disabled{opacity:.4;cursor:not-allowed}
+.typing{display:flex;gap:4px;align-items:center;padding:4px 0}
+.td{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* Upload */
+.upzone{border:2px dashed var(--border2);border-radius:var(--radius);padding:40px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:16px;background:var(--surface)}
+.upzone:hover,.upzone.drag{border-color:var(--accent);background:var(--accent-light)}
+.upzone input{display:none}
+.up-icon{font-size:32px;margin-bottom:10px}
+.up-l{font-size:14px;font-weight:500;margin-bottom:4px}
+.up-s{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+#up-status{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--ok);min-height:18px;margin-bottom:12px}
+
+/* Workflow cards */
+.wfc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px}
+.wfc-t{font-size:14px;font-weight:600;margin-bottom:3px}
+.wfc-d{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:14px}
+.wfinput{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:12px;font-family:'JetBrains Mono',monospace;outline:none;resize:vertical;background:var(--bg);margin-bottom:8px}
+.wfinput:focus{border-color:var(--accent)}
+.wfbtn{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:7px 16px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer}
+.wfbtn:hover{border-color:var(--accent);color:var(--accent)}
+.wfres{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#16a34a;margin-top:10px;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow-y:auto;display:none}
+
+.empty{text-align:center;padding:32px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)}
+.loading{text-align:center;padding:24px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <h2>Smart Assistant</h2>
+  <p>Admin Dashboard — sign in to continue</p>
+  <div class="lbox">
+    <input id="lemail" type="email" placeholder="Email" value="admin@demo.com">
+    <input id="lpw"    type="password" placeholder="Password">
+    <div id="lerr"></div>
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;width:100%;flex-direction:row">
+  <nav id="sidebar">
+    <div class="logo"><div class="logo-icon">S</div>SmartAssist</div>
+
+    <div class="nav-sec">Overview</div>
+    <div class="nav on" onclick="go('analytics',this)">📊 Analytics</div>
+
+    <div class="nav-sec">Operations</div>
+    <div class="nav" onclick="go('leads',this)">👥 Leads</div>
+    <div class="nav" onclick="go('chat',this)">💬 Chat</div>
+    <div class="nav" onclick="go('docs',this)">📄 Documents</div>
+    <div class="nav" onclick="go('workflows',this)">⚡ Workflows</div>
+
+    <div class="nav-sec">Logs</div>
+    <div class="nav" onclick="go('convlogs',this)">📋 Conversations</div>
+    <div class="nav" onclick="go('wflogs',this)">🔧 Workflow Logs</div>
+
+    <div class="sb-bot">
+      <div class="sb-user" id="sb-user">—</div>
+      <button class="out-btn" onclick="logout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div id="main">
+    <div class="topbar">
+      <div class="topbar-t" id="topbar-t">Analytics</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="live"><div class="dot"></div>Live</div>
+        <button class="rfbtn" onclick="reload()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ANALYTICS -->
+      <div id="panel-analytics" class="panel on">
+        <div class="sg" id="stats"><div class="loading">Loading…</div></div>
+        <div class="cg">
+          <div class="cc"><div class="cc-t">Lead breakdown</div><div class="cw"><canvas id="leadChart"></canvas></div></div>
+          <div class="cc"><div class="cc-t">Workflow results</div><div class="cw"><canvas id="wfChart"></canvas></div></div>
+        </div>
+      </div>
+
+      <!-- LEADS -->
+      <div id="panel-leads" class="panel">
+        <div style="display:flex;gap:10px;margin-bottom:14px">
+          <select id="lfilt" onchange="loadLeads()" style="border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:'Inter',sans-serif;font-size:12px;background:var(--surface)">
+            <option value="">All</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option>
+          </select>
+        </div>
+        <div class="tc">
+          <div class="th2"><span class="tt">Leads</span><span class="tc-" id="lcount">—</span></div>
+          <div id="ltable"><div class="loading">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- CHAT -->
+      <div id="panel-chat" class="panel">
+        <div class="chat-box">
+          <div class="msgs" id="msgs">
+            <div class="msg a"><div class="bubble">Hi! I'm your business assistant. Ask me anything, or share your contact info to get in touch.</div><div class="mmeta">assistant</div></div>
+          </div>
+          <div class="cinput">
+            <input id="cinput" placeholder="Type a message…" onkeydown="if(event.key==='Enter')send()">
+            <button class="sendbtn" id="sbtn" onclick="send()">Send</button>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted)" id="sid"></div>
+      </div>
+
+      <!-- DOCUMENTS -->
+      <div id="panel-docs" class="panel">
+        <div class="upzone" id="upzone" onclick="document.getElementById('fInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="onDrop(event)">
+          <input type="file" id="fInput" accept=".txt,.md,.pdf" onchange="doUpload(this.files[0])">
+          <div class="up-icon">📄</div>
+          <div class="up-l">Drop a file or click to upload</div>
+          <div class="up-s">.txt · .md · .pdf supported</div>
+        </div>
+        <div id="up-status"></div>
+        <div class="tc">
+          <div class="th2"><span class="tt">Uploaded documents</span><span class="tc-" id="dcount">—</span></div>
+          <div id="dtable"><div class="loading">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- WORKFLOWS -->
+      <div id="panel-workflows" class="panel">
+        <div class="wfc">
+          <div class="wfc-t">Email Summarizer</div>
+          <div class="wfc-d">Paste an email → get subject, summary, action items, priority</div>
+          <textarea class="wfinput" id="wEmail" rows="4" placeholder="Paste email body here…"></textarea>
+          <button class="wfbtn" onclick="runWf('summarize')">Run</button>
+          <div class="wfres" id="rEmail"></div>
+        </div>
+        <div class="wfc">
+          <div class="wfc-t">Lead Follow-up Generator</div>
+          <div class="wfc-d">Enter a lead ID → get a personalised follow-up email draft</div>
+          <input class="wfinput" id="wFuId" placeholder="Lead ID (copy from Leads tab)…" style="resize:none">
+          <button class="wfbtn" onclick="runWf('followup')">Run</button>
+          <div class="wfres" id="rFu"></div>
+        </div>
+        <div class="wfc">
+          <div class="wfc-t">Lead Scoring / CRM Sync</div>
+          <div class="wfc-d">Enter a lead ID → AI re-classifies hot/warm/cold and updates database</div>
+          <input class="wfinput" id="wScId" placeholder="Lead ID (copy from Leads tab)…" style="resize:none">
+          <button class="wfbtn" onclick="runWf('score')">Run</button>
+          <div class="wfres" id="rSc"></div>
+        </div>
+      </div>
+
+      <!-- CONV LOGS -->
+      <div id="panel-convlogs" class="panel">
+        <div class="tc">
+          <div class="th2"><span class="tt">Conversation Logs</span><span class="tc-" id="clcount">—</span></div>
+          <div id="cltable"><div class="loading">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- WF LOGS -->
+      <div id="panel-wflogs" class="panel">
+        <div class="tc">
+          <div class="th2"><span class="tt">Workflow Logs</span><span class="tc-" id="wlcount">—</span></div>
+          <div id="wltable"><div class="loading">Loading…</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const API='http://localhost:8000';
+let tok=localStorage.getItem('tok')||'';
+let sessId='', hist=[], lChart=null, wChart=null, cur='analytics';
+
+const titles={analytics:'Analytics',leads:'Leads',chat:'Chat',docs:'Documents',workflows:'Workflows',convlogs:'Conversation Logs',wflogs:'Workflow Logs'};
+const loaders={analytics:loadAnalytics,leads:loadLeads,docs:loadDocs,convlogs:loadConvLogs,wflogs:loadWfLogs};
+
+// ── Login ──
+async function doLogin(){
+  const e=document.getElementById('lemail').value.trim();
+  const p=document.getElementById('lpw').value;
+  document.getElementById('lerr').textContent='';
+  try{
+    const r=await fetch(`${API}/auth/token`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`username=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}`});
+    if(!r.ok){document.getElementById('lerr').textContent='Wrong email or password.';return;}
+    const d=await r.json();
+    tok=d.access_token; localStorage.setItem('tok',tok);
+    document.getElementById('sb-user').textContent=e;
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').style.display='flex';
+    loadAnalytics();
+  }catch{document.getElementById('lerr').textContent='Cannot reach server. Is it running?';}
+}
+document.getElementById('lpw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+function logout(){localStorage.removeItem('tok');tok='';location.reload();}
+if(tok){document.getElementById('login').style.display='none';document.getElementById('app').style.display='flex';loadAnalytics();}
+
+// ── Nav ──
+function go(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  document.getElementById(`panel-${id}`).classList.add('on');
+  el.classList.add('on');
+  document.getElementById('topbar-t').textContent=titles[id]||id;
+  cur=id; if(loaders[id])loaders[id]();
+}
+function reload(){if(loaders[cur])loaders[cur]();}
+
+// ── Helpers ──
+function h(){return{'Authorization':`Bearer ${tok}`,'Content-Type':'application/json'};}
+function dt(s){return s?new Date(s).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}):'—';}
+function badge(s){const m={hot:'b-hot',warm:'b-warm',cold:'b-cold',success:'b-ok',failed:'b-fail',user:'b-user',assistant:'b-ai'};return `<span class="b ${m[s]||'b-cold'}">${s}</span>`;}
+
+// ── Analytics ──
+async function loadAnalytics(){
+  try{
+    const r=await fetch(`${API}/admin/analytics`,{headers:h()});
+    const d=await r.json();
+    document.getElementById('stats').innerHTML=`
+      <div class="sc"><div class="sc-l">Total Leads</div><div class="sc-v">${d.leads.total}</div><div class="sc-s">${d.leads.hot} hot · ${d.leads.warm} warm · ${d.leads.cold} cold</div></div>
+      <div class="sc g"><div class="sc-l">Messages</div><div class="sc-v">${d.messages}</div><div class="sc-s">across all sessions</div></div>
+      <div class="sc w"><div class="sc-l">Workflows Run</div><div class="sc-v">${d.workflows.total}</div><div class="sc-s">${d.workflows.success} success</div></div>
+      <div class="sc r"><div class="sc-l">Failed Workflows</div><div class="sc-v">${d.workflows.failed}</div><div class="sc-s">need attention</div></div>`;
+    if(lChart)lChart.destroy();
+    lChart=new Chart(document.getElementById('leadChart'),{type:'doughnut',data:{labels:['Hot','Warm','Cold'],datasets:[{data:[d.leads.hot,d.leads.warm,d.leads.cold],backgroundColor:['#dc2626','#d97706','#2563eb'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{family:'JetBrains Mono',size:11},boxWidth:12,padding:14}}}}});
+    if(wChart)wChart.destroy();
+    wChart=new Chart(document.getElementById('wfChart'),{type:'bar',data:{labels:['Success','Failed'],datasets:[{data:[d.workflows.success,d.workflows.failed],backgroundColor:['rgba(22,163,74,0.8)','rgba(220,38,38,0.8)'],borderRadius:6,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{family:'JetBrains Mono',size:11}},grid:{display:false}},y:{ticks:{font:{family:'JetBrains Mono',size:11}},grid:{color:'#e9ecef'}}}}});
+  }catch{document.getElementById('stats').innerHTML='<div class="loading">Could not load — is the server running?</div>';}
+}
+
+// ── Leads ──
+async function loadLeads(){
+  const s=document.getElementById('lfilt').value;
+  const url=s?`${API}/leads?status=${s}`:`${API}/leads`;
+  document.getElementById('ltable').innerHTML='<div class="loading">Loading…</div>';
+  const r=await fetch(url,{headers:h()});
+  const leads=await r.json();
+  document.getElementById('lcount').textContent=`${leads.length} records`;
+  if(!leads.length){document.getElementById('ltable').innerHTML='<div class="empty">No leads yet. Chat with the assistant and share contact details.</div>';return;}
+  document.getElementById('ltable').innerHTML=`<table><thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${leads.map(l=>`<tr><td>${l.name||'—'}</td><td>${l.email||'—'}</td><td>${l.company||'—'}</td><td>${badge(l.status)}</td><td>${dt(l.created_at)}</td><td><button onclick="copyId('${l.id}')" style="background:none;border:1px solid var(--border);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;font-family:'JetBrains Mono',monospace">copy id</button></td></tr>`).join('')}</tbody></table>`;
+}
+function copyId(id){navigator.clipboard.writeText(id).then(()=>alert('Lead ID copied!'));}
+
+// ── Chat ──
+async function send(){
+  const input=document.getElementById('cinput');
+  const msg=input.value.trim();if(!msg)return;
+  input.value='';document.getElementById('sbtn').disabled=true;
+  addMsg('u',msg); hist.push({role:'user',content:msg});
+  const tid='t'+Date.now();
+  document.getElementById('msgs').insertAdjacentHTML('beforeend',`<div id="${tid}" class="msg a"><div class="bubble"><div class="typing"><div class="td"></div><div class="td"></div><div class="td"></div></div></div></div>`);
+  document.getElementById('msgs').scrollTop=9999;
+  try{
+    const r=await fetch(`${API}/chat`,{method:'POST',headers:h(),body:JSON.stringify({message:msg,session_id:sessId,history:hist.slice(-8)})});
+    const d=await r.json();
+    document.getElementById(tid)?.remove();
+    sessId=d.session_id;
+    document.getElementById('sid').textContent=`session: ${sessId}`;
+    const meta=`intent: ${d.intent} · confidence: ${Math.round((d.confidence||0)*100)}%${d.lead_saved?' · lead captured ✓':''}`;
+    addMsg('a',d.answer,meta); hist.push({role:'assistant',content:d.answer});
+  }catch(e){document.getElementById(tid)?.remove();addMsg('a','Error — is the server running?');}
+  document.getElementById('sbtn').disabled=false;input.focus();
+}
+function addMsg(role,text,meta=''){
+  const t=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('msgs').insertAdjacentHTML('beforeend',`<div class="msg ${role}"><div class="bubble">${text}</div><div class="mmeta">${role==='u'?'you':'assistant'} · ${t}${meta?' · '+meta:''}</div></div>`);
+  document.getElementById('msgs').scrollTop=9999;
+}
+
+// ── Documents ──
+async function loadDocs(){
+  const r=await fetch(`${API}/documents`,{headers:h()});
+  const docs=await r.json();
+  document.getElementById('dcount').textContent=`${docs.length} files`;
+  if(!docs.length){document.getElementById('dtable').innerHTML='<div class="empty">No documents yet. Upload a .txt or .pdf above.</div>';return;}
+  document.getElementById('dtable').innerHTML=`<table><thead><tr><th>Filename</th><th>Doc ID</th><th>Chunks</th><th>Action</th></tr></thead><tbody>${docs.map(d=>`<tr><td>${d.filename}</td><td style="color:var(--muted);font-size:10px">${d.doc_id}</td><td>${d.chunks}</td><td><button onclick="delDoc('${d.doc_id}')" style="background:none;border:1px solid #fecaca;color:var(--fail);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer">delete</button></td></tr>`).join('')}</tbody></table>`;
+}
+async function doUpload(file){
+  if(!file)return;
+  const s=document.getElementById('up-status');
+  s.textContent=`Uploading ${file.name}…`;s.style.color='var(--muted)';
+  const fd=new FormData();fd.append('file',file);
+  const r=await fetch(`${API}/documents/upload`,{method:'POST',headers:{'Authorization':`Bearer ${tok}`},body:fd});
+  const d=await r.json();
+  s.textContent=`✓ ${file.name} — ${d.chunks_stored} chunks stored`;s.style.color='var(--ok)';
+  loadDocs();
+}
+function onDrop(e){e.preventDefault();document.getElementById('upzone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)doUpload(f);}
+async function delDoc(id){if(!confirm('Delete this document?'))return;await fetch(`${API}/documents/${id}`,{method:'DELETE',headers:h()});loadDocs();}
+
+// ── Workflows ──
+async function runWf(type){
+  if(type==='summarize'){
+    const body=document.getElementById('wEmail').value.trim();if(!body)return;
+    const el=document.getElementById('rEmail');el.style.display='block';el.textContent='Running…';
+    const r=await fetch(`${API}/workflows/summarize-email`,{method:'POST',headers:h(),body:JSON.stringify({email_body:body})});
+    el.textContent=JSON.stringify(await r.json(),null,2);
+  }else if(type==='followup'){
+    const id=document.getElementById('wFuId').value.trim();if(!id)return;
+    const el=document.getElementById('rFu');el.style.display='block';el.textContent='Running…';
+    const r=await fetch(`${API}/workflows/followup/${id}`,{method:'POST',headers:h()});
+    el.textContent=JSON.stringify(await r.json(),null,2);
+  }else if(type==='score'){
+    const id=document.getElementById('wScId').value.trim();if(!id)return;
+    const el=document.getElementById('rSc');el.style.display='block';el.textContent='Running…';
+    const r=await fetch(`${API}/workflows/score/${id}`,{method:'POST',headers:h()});
+    el.textContent=JSON.stringify(await r.json(),null,2);
+  }
+}
+
+// ── Logs ──
+async function loadConvLogs(){
+  const r=await fetch(`${API}/admin/logs`,{headers:h()});
+  const logs=await r.json();
+  document.getElementById('clcount').textContent=`${logs.length} messages`;
+  if(!logs.length){document.getElementById('cltable').innerHTML='<div class="empty">No conversations yet.</div>';return;}
+  document.getElementById('cltable').innerHTML=`<table><thead><tr><th>Role</th><th>Message</th><th>Intent</th><th>Time</th></tr></thead><tbody>${logs.map(l=>`<tr><td>${badge(l.role)}</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.content}</td><td>${l.intent||'—'}</td><td>${dt(l.created_at)}</td></tr>`).join('')}</tbody></table>`;
+}
+async function loadWfLogs(){
+  const r=await fetch(`${API}/admin/workflow-logs`,{headers:h()});
+  const logs=await r.json();
+  document.getElementById('wlcount').textContent=`${logs.length} runs`;
+  if(!logs.length){document.getElementById('wltable').innerHTML='<div class="empty">No workflow runs yet.</div>';return;}
+  document.getElementById('wltable').innerHTML=`<table><thead><tr><th>Workflow</th><th>Status</th><th>Time</th></tr></thead><tbody>${logs.map(l=>`<tr><td>${l.workflow}</td><td>${badge(l.status)}</td><td>${dt(l.created_at)}</td></tr>`).join('')}</tbody></table>`;
+}
+</script>
+</body>
+</html>
