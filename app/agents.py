@@ -185,13 +185,11 @@ Output ONLY valid JSON:
 {
   "approved": true or false,
   "confidence": 0.0 to 1.0,
-  "final_answer": "the answer to use"
+  "final_answer": "the answer to use (fix it if needed, keep it if approved)"
 }
 
 Reject (approved=false) if the answer makes up specific facts not in the context,
-is rude, or is completely off-topic (like including irrelevant contact info). 
-CRITICAL: If you reject the answer, your 'final_answer' MUST NOT contain your critique. Instead, rewrite the 'final_answer' to politely inform the user: "I apologize, but I cannot accurately answer that based on the provided documents."
-"""
+is rude, or is completely off-topic. If rejected, rewrite final_answer to be safe."""
 
 
 def validator(question: str, answer: str, context: str) -> dict:
